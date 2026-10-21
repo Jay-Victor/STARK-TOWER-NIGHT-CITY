@@ -21,6 +21,9 @@
   <img alt="Vite 7" src="https://img.shields.io/badge/Vite-7-51f5ff?style=flat-square" />
   <img alt="TypeScript 5.9" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?style=flat-square" />
   <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-ff2bd6?style=flat-square" />
+  <a href="https://github.com/Jay-Victor/STARK-TOWER-NIGHT-CITY/actions/workflows/ci.yml">
+    <img alt="CI" src="https://github.com/Jay-Victor/STARK-TOWER-NIGHT-CITY/actions/workflows/ci.yml/badge.svg" />
+  </a>
   <a href="https://github.com/Jay-Victor/STARK-TOWER-NIGHT-CITY/actions/workflows/deploy-pages.yml">
     <img alt="Deploy to GitHub Pages" src="https://github.com/Jay-Victor/STARK-TOWER-NIGHT-CITY/actions/workflows/deploy-pages.yml/badge.svg" />
   </a>
