@@ -18,6 +18,8 @@ jobs:
   build:
     name: Build static experience
     runs-on: ubuntu-latest
+    outputs:
+      pages_enabled: ${{ steps.pages_status.outputs.enabled }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,27 +30,44 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Check Pages status
+        id: pages_status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          status=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/pages")
+          if [ "$status" = "200" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::GitHub Pages is not enabled. Open Settings -> Pages -> Build and deployment -> Source: GitHub Actions, then re-run this workflow."
+          fi
+
       - name: Configure GitHub Pages
+        if: steps.pages_status.outputs.enabled == 'true'
         uses: actions/configure-pages@v5
-        with:
-          # Create/enable the Pages site on the first run. Without this input,
-          # configure-pages fails on repositories where Pages has never been
-          # enabled from the settings UI.
-          enablement: true
 
       - name: Install dependencies
+        if: steps.pages_status.outputs.enabled == 'true'
         run: npm ci
 
       - name: Type-check and build
+        if: steps.pages_status.outputs.enabled == 'true'
         run: npm run build:pages
 
       - name: Upload Pages artifact
+        if: steps.pages_status.outputs.enabled == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
   deploy:
     name: Deploy
+    if: needs.build.outputs.pages_enabled == 'true'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

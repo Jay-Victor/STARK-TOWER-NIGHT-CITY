@@ -8,6 +8,7 @@
 
 <p>
   <a href="https://jay-victor.github.io/STARK-TOWER-NIGHT-CITY/"><strong>◉ LIVE DEMO</strong></a>
+  <sub>（首次启用 Pages 后上线）</sub>
   &nbsp;·&nbsp;
   <a href="https://github.com/Jay-Victor/STARK-TOWER-NIGHT-CITY">GitHub Repository</a>
   &nbsp;·&nbsp;
@@ -226,23 +227,32 @@ npm run preview     # 预览生产包
 
 ## GitHub Pages 部署
 
+> [!IMPORTANT]
+> **首次启用 Pages 需要仓库所有者手动操作一次。** GitHub 提供的内置
+> `GITHUB_TOKEN` 无权创建 Pages 站点，这是平台的权限限制，不能由仓库代码绕过。
+>
+> 请进入 **Settings → Pages → Build and deployment → Source**，选择
+> **GitHub Actions**。启用后推送任意提交，或手动运行一次 workflow，即可自动上线。
+
 仓库已包含 [deploy-pages.yml](./.github/workflows/deploy-pages.yml)：
 
 1. 推送到 `main` 分支；
-2. GitHub Actions 自动执行 `npm ci` 与 `npm run build:pages`；
-3. 构建产物部署至 GitHub Pages。
-
-如果首次部署失败，请进入：
-
-```text
-Repository Settings → Pages → Build and deployment → Source: GitHub Actions
-```
-
-然后重新运行 workflow。
+2. Actions 先检查 Pages 是否已启用；未启用时会给出 warning 并跳过部署，避免失败；
+3. 启用后自动执行 `npm ci` 与 `npm run build:pages`；
+4. 构建产物部署至 GitHub Pages。
 
 在线地址：
 
 **https://jay-victor.github.io/STARK-TOWER-NIGHT-CITY/**
+
+部署 workflow 使用了：
+
+- 官方 `actions/configure-pages@v5`；
+- `actions/upload-pages-artifact@v3`；
+- `actions/deploy-pages@v4`；
+- `pages: write` 与 `id-token: write` 权限。
+
+Vite 在 `github-pages` 模式下会使用 `/STARK-TOWER-NIGHT-CITY/` 作为 base path，确保所有资源在项目子路径下正确加载。
 
 ## 生成主视觉（可选）
 
