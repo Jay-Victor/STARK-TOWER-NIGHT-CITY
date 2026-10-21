@@ -1,0 +1,56 @@
+{
+  "name": "stark-tower-cyberpunk",
+  "private": true,
+  "version": "1.1.0",
+  "type": "module",
+  "description": "Procedural cyberpunk Stark Tower — React Three Fiber, Drei, Three.js, post-processing and Leva.",
+  "author": "Jay-Victor",
+  "license": "MIT",
+  "homepage": "https://jay-victor.github.io/STARK-TOWER-NIGHT-CITY/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jay-Victor/STARK-TOWER-NIGHT-CITY.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Jay-Victor/STARK-TOWER-NIGHT-CITY/issues"
+  },
+  "keywords": [
+    "react-three-fiber",
+    "threejs",
+    "webgl",
+    "cyberpunk",
+    "procedural-generation",
+    "leva",
+    "postprocessing",
+    "glsl"
+  ],
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "build:pages": "tsc -b && vite build --mode github-pages",
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "cover:generate": "python scripts/generate-cover.py"
+  },
+  "dependencies": {
+    "@react-three/drei": "10.7.9",
+    "@react-three/fiber": "9.8.2",
+    "@react-three/postprocessing": "3.2.1",
+    "leva": "0.10.1",
+    "postprocessing": "6.39.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/three": "0.186.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.7"
+  }
+}
