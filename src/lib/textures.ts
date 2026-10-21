@@ -24,48 +24,79 @@ function trackedText(
   }
 }
 
-/** The sign never fetches a font or image; it is drawn straight into a CanvasTexture. */
+/**
+ * The tower wordmark. It stays deliberately close to the film's signage: one
+ * clean, wide, white STARK lockup with a cyan halo and no dashboard clutter.
+ */
 export function createStarkSignTexture(accent = '#63f8ff', secondary = '#ff2bd6') {
-  const { canvas, ctx } = makeCanvas(1024, 256)
-  const gradient = ctx.createLinearGradient(0, 0, 1024, 0)
-  gradient.addColorStop(0, 'rgba(3, 8, 15, 0)')
-  gradient.addColorStop(0.16, 'rgba(3, 8, 15, 0.88)')
-  gradient.addColorStop(0.78, 'rgba(3, 8, 15, 0.88)')
-  gradient.addColorStop(1, 'rgba(3, 8, 15, 0)')
-  ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, 1024, 256)
+  const { canvas, ctx } = makeCanvas(1536, 320)
+  const width = canvas.width
+  const height = canvas.height
 
-  ctx.strokeStyle = 'rgba(100, 247, 255, 0.45)'
+  const panel = ctx.createLinearGradient(0, 0, 0, height)
+  panel.addColorStop(0, 'rgba(5, 14, 22, 0.96)')
+  panel.addColorStop(0.45, 'rgba(3, 9, 15, 0.99)')
+  panel.addColorStop(1, 'rgba(1, 5, 9, 0.99)')
+  ctx.fillStyle = panel
+  ctx.fillRect(0, 0, width, height)
+
+  // Faint brushed metal seams.
+  const sheen = ctx.createLinearGradient(0, 0, width, 0)
+  sheen.addColorStop(0, 'rgba(110, 240, 255, 0.02)')
+  sheen.addColorStop(0.5, 'rgba(160, 255, 255, 0.07)')
+  sheen.addColorStop(1, 'rgba(110, 240, 255, 0.02)')
+  ctx.fillStyle = sheen
+  ctx.fillRect(0, 0, width, height)
+
+  ctx.strokeStyle = 'rgba(120, 245, 255, 0.32)'
   ctx.lineWidth = 2
   ctx.beginPath()
-  ctx.moveTo(80, 42)
-  ctx.lineTo(944, 42)
-  ctx.moveTo(80, 213)
-  ctx.lineTo(944, 213)
+  ctx.moveTo(96, 42)
+  ctx.lineTo(width - 96, 42)
+  ctx.moveTo(96, height - 34)
+  ctx.lineTo(width - 96, height - 34)
   ctx.stroke()
 
-  ctx.font = '500 17px "Cascadia Mono", "Consolas", monospace'
-  ctx.fillStyle = 'rgba(175, 239, 255, 0.72)'
-  trackedText(ctx, 'STARK INDUSTRIES  /  ARC REACTOR INTEGRATED', 88, 66, 2.4)
   ctx.fillStyle = secondary
-  trackedText(ctx, 'NYC — 01', 820, 66, 2)
+  ctx.fillRect(96, height - 34, 190, 3)
+  ctx.fillRect(width - 286, height - 34, 190, 3)
 
-  ctx.font = '900 116px "Bahnschrift", "Arial Black", sans-serif'
-  ctx.fillStyle = '#f2ffff'
+  ctx.font = '900 208px "Bahnschrift", "Arial Black", "Impact", sans-serif'
+  ctx.textBaseline = 'alphabetic'
+  const tracking = 26
+  const letters = 'STARK'
+  const widths = [...letters].map((letter) => ctx.measureText(letter).width)
+  const total = widths.reduce((sum, value) => sum + value, 0) + tracking * (letters.length - 1)
+  let cursor = (width - total) / 2
+  const baseline = 246
+
+  ctx.save()
   ctx.shadowColor = accent
-  ctx.shadowBlur = 32
-  trackedText(ctx, 'STARK', 92, 172, 12)
-  ctx.shadowBlur = 0
+  ctx.shadowBlur = 46
+  ctx.fillStyle = 'rgba(200, 255, 255, 0.55)'
+  for (let index = 0; index < letters.length; index += 1) {
+    ctx.fillText(letters[index], cursor, baseline)
+    cursor += widths[index] + tracking
+  }
+  ctx.restore()
 
-  ctx.fillStyle = accent
-  ctx.fillRect(92, 188, 504, 4)
+  cursor = (width - total) / 2
+  ctx.fillStyle = '#f4ffff'
+  ctx.strokeStyle = 'rgba(18, 39, 48, 0.85)'
+  ctx.lineWidth = 6
+  for (let index = 0; index < letters.length; index += 1) {
+    ctx.strokeText(letters[index], cursor, baseline)
+    ctx.fillText(letters[index], cursor, baseline)
+    cursor += widths[index] + tracking
+  }
 
-  ctx.font = '600 19px "Cascadia Mono", "Consolas", monospace'
-  ctx.fillStyle = 'rgba(215, 252, 255, 0.9)'
-  trackedText(ctx, 'TOWER 01  //  DEFENSE GRID ONLINE', 616, 163, 1.5)
-  ctx.fillStyle = secondary
-  ctx.fillRect(922, 140, 3, 28)
-  ctx.fillRect(930, 140, 1, 28)
+  // A thin spectral highlight across the lower third of the letters.
+  const cut = ctx.createLinearGradient(0, 150, 0, 260)
+  cut.addColorStop(0, 'rgba(255, 255, 255, 0)')
+  cut.addColorStop(0.7, 'rgba(140, 252, 255, 0.08)')
+  cut.addColorStop(1, 'rgba(255, 43, 214, 0.14)')
+  ctx.fillStyle = cut
+  ctx.fillRect(0, 0, width, height)
 
   const texture = new CanvasTexture(canvas)
   texture.colorSpace = SRGBColorSpace

@@ -29,10 +29,10 @@ export function Lighting({ settings, palette, sunDirection }: LightingProps) {
     const t = state.clock.elapsedTime
     const flickerA = 0.97 + Math.sin(t * 1.9) * 0.025 + Math.sin(t * 7.1) * 0.012
     const flickerB = 0.94 + Math.sin(t * 1.3 + 2.1) * 0.035 + Math.sin(t * 5.7) * 0.018
-    if (cyanLight.current) cyanLight.current.intensity = 760 * neonPower * master * flickerA
-    if (magentaLight.current) magentaLight.current.intensity = 540 * neonPower * master * flickerB
-    if (warmLight.current) warmLight.current.intensity = 260 * neonPower * master * (0.9 + Math.sin(t * 0.7) * 0.06)
-    if (crownLight.current) crownLight.current.intensity = 380 * neonPower * master * flickerA
+    if (cyanLight.current) cyanLight.current.intensity = 190 * neonPower * master * flickerA
+    if (magentaLight.current) magentaLight.current.intensity = 70 * neonPower * master * flickerB
+    if (warmLight.current) warmLight.current.intensity = 110 * neonPower * master * (0.9 + Math.sin(t * 0.7) * 0.06)
+    if (crownLight.current) crownLight.current.intensity = 100 * neonPower * master * flickerA
     if (sunLight.current) sunLight.current.intensity = palette.keyIntensity * master
   })
 
@@ -61,14 +61,25 @@ export function Lighting({ settings, palette, sunDirection }: LightingProps) {
         shadow-bias={-0.00008}
         shadow-normalBias={0.035}
       />
+      {/* A cool moon key gives the toon ramps a readable hard terminator at night. */}
+      <directionalLight
+        color="#a4c2f0"
+        intensity={(0.4 + palette.night * 0.95) * master}
+        position={[-110, 130, 70]}
+      />
+      <directionalLight
+        color={settings.neonMagenta}
+        intensity={0.13 * neonPower * palette.night * master}
+        position={[95, 46, -90]}
+      />
       <directionalLight
         color="#7f9cff"
-        intensity={palette.night * 0.55 * master}
+        intensity={palette.night * 0.16 * master}
         position={[70, 90, -80]}
       />
       <directionalLight
         color={settings.neonCyan}
-        intensity={0.3 * neonPower * master}
+        intensity={0.14 * neonPower * master}
         position={[-60, 20, -50]}
       />
 
@@ -83,32 +94,46 @@ export function Lighting({ settings, palette, sunDirection }: LightingProps) {
       <pointLight
         ref={cyanLight}
         color={settings.neonCyan}
-        position={[-19, 10, 16]}
-        intensity={760 * neonPower * master}
-        distance={92}
+        position={[-22, 7, 22]}
+        intensity={190 * neonPower * master}
+        distance={88}
         decay={2}
       />
       <pointLight
         ref={magentaLight}
         color={settings.neonMagenta}
-        position={[18, 12, -17]}
-        intensity={540 * neonPower * master}
-        distance={82}
+        position={[24, 9, -20]}
+        intensity={95 * neonPower * master}
+        distance={80}
         decay={2}
       />
       <pointLight
         ref={crownLight}
         color={settings.neonCyan}
         position={[6, 58, -8]}
-        intensity={380 * neonPower * master}
-        distance={58}
+        intensity={105 * neonPower * master}
+        distance={56}
         decay={2}
       />
       <pointLight
         color={settings.neonMagenta}
         position={[-9, 42, 9]}
-        intensity={260 * neonPower * master}
-        distance={45}
+        intensity={45 * neonPower * master}
+        distance={42}
+        decay={2}
+      />
+      <pointLight
+        color={settings.neonCyan}
+        position={[-38, 5, 34]}
+        intensity={55 * neonPower * master}
+        distance={46}
+        decay={2}
+      />
+      <pointLight
+        color={settings.neonMagenta}
+        position={[40, 6, -26]}
+        intensity={50 * neonPower * master}
+        distance={44}
         decay={2}
       />
     </group>

@@ -1,11 +1,66 @@
-import { Color } from 'three'
 import type { BoxTransform, Vec3 } from '../../types'
 import { mulberry32 } from '../../lib/random'
+import {
+  box,
+  FACES,
+  createWindowPalette,
+  emitBands,
+  emitFins,
+  emitMullions,
+  emitWindows,
+  strutBetween,
+  type WindowDatum,
+  type WindowSpec,
+} from './facade'
 
-export interface WindowTier {
+export type { WindowDatum } from './facade'
+
+export interface TowerData {
+  glassVolumes: BoxTransform[]
+  structure: BoxTransform[]
+  frames: BoxTransform[]
+  trim: BoxTransform[]
+  greebles: BoxTransform[]
+  windows: WindowDatum[]
+  neonCyan: BoxTransform[]
+  neonMagenta: BoxTransform[]
+  neonWarm: BoxTransform[]
+  inkEdges: BoxTransform[]
+  beacons: Vec3[]
+}
+
+export const TOWER_HEIGHT = 92
+
+export const TOWER_SIGN = {
+  y: 53.35,
+  z: 7.05,
+  width: 14.0,
+  height: 3.6,
+  planeWidth: 13.4,
+  planeHeight: 2.8,
+}
+
+export const TOWER_ROOF = {
+  y: 64.75,
+  width: 13.4,
+  depth: 9.4,
+  topWidth: 6.8,
+  topDepth: 4.4,
+  height: 4.8,
+}
+
+export const TOWER_DECK = {
+  x: 13.0,
+  z: 0.45,
+  y: 48.8,
+  width: 9.0,
+  depth: 8.0,
+  radius: 2.45,
+  height: 2.9,
+}
+
+interface Tier {
   id: string
-  x: number
-  z: number
   y0: number
   y1: number
   width: number
@@ -13,463 +68,330 @@ export interface WindowTier {
   columns: number
   seed: number
   litRatio: number
+  margin: number
 }
 
-export interface WindowDatum {
-  position: Vec3
-  rotationY: number
-  scale: [number, number]
-  color: Vec3
-}
+const TIERS: Tier[] = [
+  { id: 'lower', y0: 10.6, y1: 31.2, width: 25.5, depth: 17.6, columns: 14, seed: 117, litRatio: 0.27, margin: 1.1 },
+  { id: 'mid', y0: 32.0, y1: 45.4, width: 21, depth: 14.6, columns: 12, seed: 231, litRatio: 0.24, margin: 1.05 },
+  { id: 'upper', y0: 46.2, y1: 57.2, width: 16.8, depth: 12.4, columns: 10, seed: 379, litRatio: 0.26, margin: 1.0 },
+]
 
-export interface TowerData {
-  glassVolumes: BoxTransform[]
-  structure: BoxTransform[]
-  mullions: BoxTransform[]
-  braces: BoxTransform[]
-  greebles: BoxTransform[]
-  windows: WindowDatum[]
-  neonCyan: BoxTransform[]
-  neonMagenta: BoxTransform[]
-}
-
-export const TOWER_HEIGHT = 88
-export const TOWER_WINDOW_TIERS: WindowTier[] = [
-  {
-    id: 'lower-shaft',
-    x: 0.15,
+/** A tier's window bay grid, sized so every floor line lands on a real storey. */
+function tierWindowSpec(tier: Tier): WindowSpec {
+  const rows = Math.max(4, Math.floor((tier.y1 - tier.y0 - 1.2) / 1.35))
+  return {
+    x: 0,
     z: 0,
-    y0: 8.4,
-    y1: 28.8,
-    width: 18,
-    depth: 18,
-    columns: 18,
-    seed: 117,
-    litRatio: 0.58,
-  },
-  {
-    id: 'mid-shaft',
-    x: -1.35,
-    z: 0.9,
-    y0: 29.1,
-    y1: 43.8,
-    width: 14.2,
-    depth: 14,
-    columns: 14,
-    seed: 231,
-    litRatio: 0.5,
-  },
-  {
-    id: 'upper-shaft',
-    x: 1.4,
-    z: -0.9,
-    y0: 44.1,
-    y1: 55.6,
-    width: 10.2,
-    depth: 10,
-    columns: 9,
-    seed: 379,
-    litRatio: 0.54,
-  },
-]
-
-const CROWN_WINDOWS = {
-  x: 0,
-  z: 0,
-  y0: 56.4,
-  y1: 61.6,
-  width: 7.3,
-  depth: 7.3,
-  columns: 4,
-  rows: 3,
-  seed: 913,
-  litRatio: 0.42,
-}
-
-const POD_WINDOWS = 12
-
-function tierRows(y0: number, y1: number) {
-  return Math.max(4, Math.floor((y1 - y0 - 2.2) / 1.32))
-}
-
-export const TOWER_WINDOW_COUNT =
-  TOWER_WINDOW_TIERS.reduce((total, tier) => total + tierRows(tier.y0, tier.y1) * tier.columns * 4, 0) +
-  CROWN_WINDOWS.rows * CROWN_WINDOWS.columns * 4 +
-  POD_WINDOWS
-
-function box(
-  position: Vec3,
-  scale: Vec3,
-  rotation?: Vec3,
-): BoxTransform {
-  return rotation ? { position, scale, rotation } : { position, scale }
-}
-
-interface Face {
-  rotationY: number
-  axis: 'x' | 'z'
-  sign: 1 | -1
-}
-
-const FACES: Face[] = [
-  { rotationY: 0, axis: 'z', sign: 1 },
-  { rotationY: Math.PI, axis: 'z', sign: -1 },
-  { rotationY: Math.PI / 2, axis: 'x', sign: 1 },
-  { rotationY: -Math.PI / 2, axis: 'x', sign: -1 },
-]
-
-function facePoint(
-  face: Face,
-  x: number,
-  z: number,
-  width: number,
-  depth: number,
-  along: number,
-  outward: number,
-): [number, number] {
-  if (face.axis === 'z') {
-    return [x + along, z + face.sign * (depth / 2 + outward)]
+    y0: tier.y0 + 0.65,
+    y1: tier.y1 - 0.55,
+    width: tier.width,
+    depth: tier.depth,
+    columns: tier.columns,
+    rows,
+    litRatio: tier.litRatio,
+    seed: tier.seed,
+    margin: tier.margin,
+    style: 'bay',
   }
-  return [x + face.sign * (width / 2 + outward), z + along]
-}
-
-function pushWindow(
-  target: WindowDatum[],
-  face: Face,
-  x: number,
-  z: number,
-  width: number,
-  depth: number,
-  along: number,
-  y: number,
-  paneWidth: number,
-  paneHeight: number,
-  color: Color,
-) {
-  const [px, pz] = facePoint(face, x, z, width, depth, along, 0.055)
-  target.push({
-    position: [px, y, pz],
-    rotationY: face.rotationY,
-    scale: [paneWidth, paneHeight],
-    color: [color.r, color.g, color.b],
-  })
-}
-
-function windowColour(
-  random: () => number,
-  litRatio: number,
-  column: number,
-  row: number,
-  cyan: Color,
-  magenta: Color,
-  amber: Color,
-  ice: Color,
-) {
-  const litBias = row % 5 === 0 ? 0.1 : 0
-  const lit = random() < litRatio + litBias
-  if (!lit) return new Color(0.014, 0.032, 0.05)
-
-  const family = random()
-  const source = family < 0.47 ? cyan : family < 0.69 ? ice : family < 0.87 ? amber : magenta
-  const colour = source.clone()
-  const power = 0.55 + random() * 1.75 + (column % 7 === 0 ? 0.55 : 0) + (row % 4 === 0 ? 0.2 : 0)
-  return colour.multiplyScalar(power)
 }
 
 export function createTowerData(neonCyan: string, neonMagenta: string): TowerData {
-  const cyan = new Color(neonCyan)
-  const magenta = new Color(neonMagenta)
-  const amber = new Color('#ffad67')
-  const ice = new Color('#d6f8ff')
+  const palette = createWindowPalette(neonCyan, neonMagenta)
   const glassVolumes: BoxTransform[] = []
   const structure: BoxTransform[] = []
-  const mullions: BoxTransform[] = []
-  const braces: BoxTransform[] = []
+  const frames: BoxTransform[] = []
+  const trim: BoxTransform[] = []
   const greebles: BoxTransform[] = []
   const windows: WindowDatum[] = []
   const neonCyanBoxes: BoxTransform[] = []
   const neonMagentaBoxes: BoxTransform[] = []
+  const neonWarmBoxes: BoxTransform[] = []
+  const inkEdges: BoxTransform[] = []
+  const beacons: Vec3[] = []
+  const random = mulberry32(0x57a4c0de)
 
-  // ---- Podium, plinth and entrance -------------------------------------------------
-  structure.push(box([0, 0.35, 0], [38, 0.7, 38]))
-  structure.push(box([0, 0.9, 0], [33, 0.5, 33]))
-  structure.push(box([0, 1.55, 0], [28, 0.9, 27]))
-  structure.push(box([0, 2.25, 0], [24, 0.7, 23]))
-  structure.push(box([0, 5.1, 0], [22.5, 5.1, 21]))
-  structure.push(box([0, 7.9, 0], [24.5, 1.1, 22.5]))
-  structure.push(box([0, 8.15, 0], [19.1, 0.5, 19.1]))
+  // ---------------------------------------------------------------- plaza / plinth
+  structure.push(box([0, 0.22, 0], [46, 0.44, 46]))
+  structure.push(box([0, 0.68, 0], [40, 0.5, 40]))
+  structure.push(box([0, 1.12, 0], [34, 0.4, 34]))
+  structure.push(box([0, 1.58, 0], [28, 0.55, 26]))
 
-  // The entry is an exaggerated A-frame silhouette.
-  structure.push(box([-7.6, 4.2, 12.7], [0.65, 7.4, 0.65], [0, 0, -0.23]))
-  structure.push(box([7.6, 4.2, 12.7], [0.65, 7.4, 0.65], [0, 0, 0.23]))
-  structure.push(box([0, 7.1, 12.55], [16.4, 0.55, 1.6]))
-  structure.push(box([0, 8.4, 12.5], [17.4, 0.35, 2.4]))
-  structure.push(box([-9.5, 2.2, 14.2], [0.5, 4.2, 0.5], [0, 0, -0.36]))
-  structure.push(box([9.5, 2.2, 14.2], [0.5, 4.2, 0.5], [0, 0, 0.36]))
-  structure.push(box([0, 0.35, 20.6], [15, 0.7, 3.4]))
-  structure.push(box([0, 0.2, 24.5], [11, 0.4, 4.8]))
+  // Approach steps: broad on the +Z frontage, with a low landing.
+  structure.push(box([0, 0.35, 20.9], [26, 0.3, 2.4]))
+  structure.push(box([0, 0.62, 22.6], [24, 0.26, 2.2]))
+  structure.push(box([0, 0.88, 24.2], [22, 0.24, 2.0]))
+  trim.push(box([0, 1.03, 25.4], [21, 0.14, 1.1]))
 
-  // Warm entry portal, deliberately smaller than the mechanical canopy.
-  glassVolumes.push(box([0, 5.25, 10.86], [12.8, 4.1, 0.32]))
-  neonCyanBoxes.push(box([-6.35, 5.15, 11.05], [0.09, 4.3, 0.09]))
-  neonCyanBoxes.push(box([6.35, 5.15, 11.05], [0.09, 4.3, 0.09]))
-  neonCyanBoxes.push(box([0, 7.25, 11.05], [12.75, 0.09, 0.09]))
-  neonMagentaBoxes.push(box([0, 2.95, 20.65], [15.4, 0.07, 0.12]))
+  // Bollards along the forecourt edge.
+  for (let i = -5; i <= 5; i += 1) {
+    structure.push(box([i * 2.4, 1.55, 27.3], [0.32, 1.0, 0.32]))
+  }
 
-  // ---- Shafts ----------------------------------------------------------------------
-  TOWER_WINDOW_TIERS.forEach((tier, tierIndex) => {
+  // --------------------------------------------------------------------- podium
+  structure.push(box([0, 5.7, 0], [26, 7.8, 20]))
+  glassVolumes.push(box([0, 4.5, 0], [25.2, 4.9, 19.2]))
+  structure.push(box([0, 8.55, 0], [26.6, 2.2, 20.6]))
+  trim.push(box([0, 9.75, 0], [28.6, 0.5, 22.6]))
+  trim.push(box([0, 10.12, 0], [27.8, 0.3, 21.8]))
+
+  // Deep-set lobby behind the colonnade.
+  glassVolumes.push(box([0, 4.4, 9.95], [20.4, 4.8, 0.35]))
+  for (let i = -5; i <= 5; i += 1) {
+    frames.push(box([i * 1.75, 4.4, 10.18], [0.1, 4.8, 0.12]))
+  }
+  neonWarmBoxes.push(box([0, 6.95, 10.2], [19.4, 0.08, 0.08]))
+  neonWarmBoxes.push(box([0, 2.15, 10.2], [19.4, 0.06, 0.08]))
+
+  // Colonnade: four front piers, five per side, all with base and capital blocks.
+  const frontColumns = [-11.2, -7.0, 7.0, 11.2]
+  for (const x of frontColumns) {
+    structure.push(box([x, 2.05, 10.7], [1.75, 0.6, 1.75]))
+    structure.push(box([x, 5.25, 10.7], [1.35, 6.4, 1.35]))
+    structure.push(box([x, 8.7, 10.7], [1.65, 0.45, 1.65]))
+  }
+  for (const z of [-7.2, -3.2, 0.8, 4.8]) {
+    for (const sign of [-1, 1]) {
+      structure.push(box([sign * 13.2, 2.05, z], [1.65, 0.6, 1.65]))
+      structure.push(box([sign * 13.2, 5.25, z], [1.3, 6.4, 1.3]))
+      structure.push(box([sign * 13.2, 8.7, z], [1.55, 0.45, 1.55]))
+    }
+  }
+
+  // Corner piers are heavier than the colonnade: the base reads as masonry.
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      structure.push(box([sx * 12.5, 5.6, sz * 9.5], [2.5, 7.6, 2.5]))
+      trim.push(box([sx * 12.5, 9.6, sz * 9.5], [2.9, 0.4, 2.9]))
+    }
+  }
+
+  // Entry portal and its cantilevered canopy.
+  glassVolumes.push(box([0, 4.55, 10.45], [11.6, 5.2, 0.3]))
+  frames.push(box([-5.9, 4.55, 10.65], [0.16, 5.2, 0.2]))
+  frames.push(box([5.9, 4.55, 10.65], [0.16, 5.2, 0.2]))
+  frames.push(box([0, 7.2, 10.65], [11.9, 0.16, 0.2]))
+  neonWarmBoxes.push(box([0, 2.15, 10.7], [11.2, 0.08, 0.1]))
+  neonWarmBoxes.push(box([-5.55, 4.3, 10.7], [0.06, 4.2, 0.1]))
+  neonWarmBoxes.push(box([5.55, 4.3, 10.7], [0.06, 4.2, 0.1]))
+  for (const sx of [-1, 1]) {
+    structure.push(box([sx * 7.4, 6.3, 12.7], [1.35, 9.2, 1.35]))
+  }
+  trim.push(box([0, 9.15, 15.5], [17.2, 0.6, 6.6]))
+  trim.push(box([0, 9.65, 15.5], [16.4, 0.35, 5.8]))
+  trim.push(box([0, 9.0, 18.9], [17.6, 0.45, 0.5]))
+  structure.push(strutBetween([-7.4, 5.2, 11.9], [-7.4, 9.0, 18.3], 0.38))
+  structure.push(strutBetween([7.4, 5.2, 11.9], [7.4, 9.0, 18.3], 0.38))
+  neonMagentaBoxes.push(box([0, 8.75, 18.95], [17.6, 0.07, 0.09]))
+  neonWarmBoxes.push(box([0, 8.68, 12.5], [14.8, 0.06, 0.08]))
+
+  inkEdges.push(box([0, 5.7, 0], [26, 7.8, 20]))
+
+  // ---------------------------------------------------------------- shaft tiers
+  TIERS.forEach((tier, index) => {
     const height = tier.y1 - tier.y0
     const midY = (tier.y0 + tier.y1) / 2
-    glassVolumes.push(box([tier.x, midY, tier.z], [tier.width, height - 0.9, tier.depth]))
-    structure.push(box([tier.x, midY - 0.12, tier.z], [tier.width - 1.55, height - 1.2, tier.depth - 1.55]))
 
-    // Roof collar and the recessed structural belt between volumes.
-    structure.push(box([tier.x, tier.y1 + 0.15, tier.z], [tier.width + 1.8, 0.55, tier.depth + 1.8]))
-    structure.push(box([tier.x, tier.y0 - 0.05, tier.z], [tier.width + 0.8, 0.65, tier.depth + 0.8]))
-    structure.push(box([tier.x, tier.y1 - 0.95, tier.z], [tier.width + 0.45, 0.3, tier.depth + 0.45]))
+    glassVolumes.push(box([0, midY, 0], [tier.width - 0.25, height - 0.45, tier.depth - 0.25]))
+    structure.push(box([0, midY - 0.1, 0], [tier.width - 3.4, height - 1.5, tier.depth - 3.4]))
 
+    // Facade grid.
+    const spec = tierWindowSpec(tier)
+    emitWindows(spec, palette, windows)
+    emitMullions(spec, frames, { every: 2, width: 0.055, depth: 0.085 })
+    emitBands(spec, frames, { every: 2, height: 0.12, depth: 0.07 })
+    emitFins(spec, frames, { every: 1, width: 0.2, depth: 0.55 })
+
+    // Broad structural fins on the short ends of the slab.
+    for (const sz of [-1, 1]) {
+      for (const sx of [-1, 1]) {
+        structure.push(
+          box(
+            [sx * (tier.width / 2 - 0.42), midY, sz * (tier.depth / 2 + 0.22)],
+            [0.82, height - 0.8, 0.9],
+          ),
+        )
+      }
+    }
     // Corner mega-columns.
     for (const sx of [-1, 1]) {
       for (const sz of [-1, 1]) {
         structure.push(
           box(
-            [tier.x + sx * (tier.width / 2 - 0.16), midY, tier.z + sz * (tier.depth / 2 - 0.16)],
-            [0.72, height - 0.6, 0.72],
+            [sx * (tier.width / 2 - 0.72), midY, sz * (tier.depth / 2 - 0.72)],
+            [1.55, height - 0.6, 1.55],
           ),
         )
       }
     }
 
-    // Broad exterior fins make the silhouette feel engineered instead of boxy.
-    structure.push(box([tier.x + tier.width / 2 + 0.22, midY, tier.z], [0.45, height - 1.4, 1.1]))
-    structure.push(box([tier.x - tier.width / 2 - 0.22, midY, tier.z], [0.45, height - 1.4, 1.1]))
-    structure.push(box([tier.x, midY, tier.z + tier.depth / 2 + 0.22], [1.1, height - 1.4, 0.45]))
-    structure.push(box([tier.x, midY, tier.z - tier.depth / 2 - 0.22], [1.1, height - 1.4, 0.45]))
+    // Base belt and roof terrace: dark metal, only a thin stone lip.
+    frames.push(box([0, tier.y0 + 0.05, 0], [tier.width + 0.55, 0.42, tier.depth + 0.55]))
+    frames.push(box([0, tier.y1 + 0.26, 0], [tier.width + 0.95, 0.4, tier.depth + 0.95]))
+    structure.push(box([0, tier.y1 + 0.58, 0], [tier.width + 0.35, 0.22, tier.depth + 0.35]))
+    for (const sz of [-1, 1]) {
+      trim.push(box([0, tier.y1 + 0.82, sz * (tier.depth / 2 + 0.46)], [tier.width + 0.95, 0.32, 0.18]))
+    }
+    for (const sx of [-1, 1]) {
+      trim.push(box([sx * (tier.width / 2 + 0.46), tier.y1 + 0.82, 0], [0.18, 0.32, tier.depth + 0.95]))
+    }
 
-    const random = mulberry32(tier.seed)
-    const rows = tierRows(tier.y0, tier.y1)
-    const usableHeight = height - 2.2
-    const rowStep = usableHeight / rows
-    const margin = 0.78
-    const glowRow = Math.floor(random() * rows)
-
-    FACES.forEach((face, faceIndex) => {
-      const span = face.axis === 'z' ? tier.width : tier.depth
-      const marginForFace = margin
-      const colStep = (span - marginForFace * 2) / tier.columns
-      const paneWidth = colStep * 0.56
-      const paneHeight = rowStep * 0.51
-
-      for (let row = 0; row < rows; row += 1) {
-        const y = tier.y0 + 1.1 + rowStep * (row + 0.5)
-        for (let column = 0; column < tier.columns; column += 1) {
-          const along = -span / 2 + marginForFace + colStep * (column + 0.5)
-          const boost = row === glowRow && faceIndex < 2 ? 0.24 : 0
-          const color = windowColour(
-            random,
-            tier.litRatio + boost + (tierIndex === 0 ? 0.03 : 0),
-            column,
-            row,
-            cyan,
-            magenta,
-            amber,
-            ice,
-          )
-          pushWindow(windows, face, tier.x, tier.z, tier.width, tier.depth, along, y, paneWidth, paneHeight, color)
-        }
+    // A cyan belt at each setback, a magenta one on alternating tiers.
+    const top = tier.y1 - 0.3
+    for (const face of [
+      [0, top, tier.depth / 2 + 0.62, tier.width + 0.2, 0.07, 0.07],
+      [0, top, -(tier.depth / 2 + 0.62), tier.width + 0.2, 0.07, 0.07],
+      [tier.width / 2 + 0.62, top, 0, 0.07, 0.07, tier.depth + 0.2],
+      [-(tier.width / 2 + 0.62), top, 0, 0.07, 0.07, tier.depth + 0.2],
+    ] as const) {
+      neonCyanBoxes.push(box([face[0], face[1], face[2]], [face[3], face[4], face[5]]))
+    }
+    if (index !== 1) {
+      const belt = tier.y0 + 0.28
+      for (const face of [
+        [0, belt, tier.depth / 2 + 0.55, tier.width + 0.1, 0.055, 0.06],
+        [0, belt, -(tier.depth / 2 + 0.55), tier.width + 0.1, 0.055, 0.06],
+        [tier.width / 2 + 0.55, belt, 0, 0.06, 0.055, tier.depth + 0.1],
+        [-(tier.width / 2 + 0.55), belt, 0, 0.06, 0.055, tier.depth + 0.1],
+      ] as const) {
+        neonMagentaBoxes.push(box([face[0], face[1], face[2]], [face[3], face[4], face[5]]))
       }
+    }
 
-      // Vertical mullions and railings are instanced as one dark-metal mesh.
-      for (let column = 0; column <= tier.columns; column += 1) {
-        const along = -span / 2 + marginForFace + colStep * column
-        const [px, pz] = facePoint(face, tier.x, tier.z, tier.width, tier.depth, along, 0.1)
-        mullions.push(
-          box(
-            [px, midY, pz],
-            face.axis === 'z' ? [0.045, height - 1.2, 0.11] : [0.11, height - 1.2, 0.045],
-          ),
-        )
+    // Mechanical grilles and louvers break up the glass with real hardware.
+    for (let i = 0; i < 6; i += 1) {
+      const face = Math.floor(random() * 4)
+      const along = (random() - 0.5) * (tier.width - 4)
+      const y = tier.y0 + 1.2 + random() * (height - 2.6)
+      if (face === 0 || face === 1) {
+        greebles.push(box([along, y, (face === 0 ? 1 : -1) * (tier.depth / 2 + 0.4)], [0.65, 0.28, 0.5]))
+      } else {
+        greebles.push(box([(face === 2 ? 1 : -1) * (tier.width / 2 + 0.4), y, along], [0.5, 0.28, 0.65]))
       }
-      for (let row = 0; row <= rows; row += 1) {
-        const y = tier.y0 + 1.1 + rowStep * row
-        const [px, pz] = facePoint(face, tier.x, tier.z, tier.width, tier.depth, 0, 0.1)
-        mullions.push(
-          box(
-            [px, y, pz],
-            face.axis === 'z' ? [span - margin * 2 + 0.1, 0.045, 0.12] : [0.12, 0.045, span - margin * 2 + 0.1],
-          ),
-        )
-      }
-    })
+    }
 
-    // The offset X-braces feel like exposed load-bearing machinery.
-    const braceHeight = height - 2.2
-    const braceWidth = tier.width - 2.6
-    const braceDepth = tier.depth - 2.6
-    const frontLength = Math.hypot(braceWidth, braceHeight)
-    const sideLength = Math.hypot(braceDepth, braceHeight)
-    const frontAngle = Math.atan2(braceWidth, braceHeight)
-    const sideAngle = Math.atan2(braceDepth, braceHeight)
-    braces.push(
-      box(
-        [tier.x, midY, tier.z + tier.depth / 2 + 0.32],
-        [0.17, frontLength, 0.19],
-        [0, 0, -frontAngle],
-      ),
-    )
-    braces.push(
-      box(
-        [tier.x, midY, tier.z - tier.depth / 2 - 0.32],
-        [0.17, frontLength, 0.19],
-        [0, 0, frontAngle],
-      ),
-    )
-    braces.push(
-      box(
-        [tier.x + tier.width / 2 + 0.32, midY, tier.z],
-        [0.19, sideLength, 0.17],
-        [sideAngle, 0, 0],
-      ),
-    )
-    braces.push(
-      box(
-        [tier.x - tier.width / 2 - 0.32, midY, tier.z],
-        [0.19, sideLength, 0.17],
-        [-sideAngle, 0, 0],
-      ),
-    )
+    // Rooftop mechanical volumes only appear on the broad terraces.
+    if (index < 2) {
+      structure.push(box([-6.8, tier.y1 + 1.6, 3.1], [4.6, 1.8, 3.2]))
+      structure.push(box([5.9, tier.y1 + 1.35, -2.9], [3.9, 1.3, 2.8]))
+      structure.push(box([0.4, tier.y1 + 1.15, -6.4], [4.8, 0.9, 1.6]))
+      greebles.push(box([-6.8, tier.y1 + 2.7, 3.1], [1.2, 0.4, 1.2]))
+      greebles.push(box([5.9, tier.y1 + 2.15, -2.9], [0.9, 0.3, 0.9]))
+      beacons.push([-6.8, tier.y1 + 3.0, 3.1], [5.9, tier.y1 + 2.4, -2.9])
+    }
 
-    // Pipes, vents and service pods. Small enough to read as greebles from afar.
-    for (let i = 0; i < 18; i += 1) {
-      const face = FACES[Math.floor(random() * FACES.length)]
-      const along = (random() - 0.5) * (tier.width - 2.5)
-      const [px, pz] = facePoint(face, tier.x, tier.z, tier.width, tier.depth, along, 0.28)
-      const y = tier.y0 + 1.4 + random() * (height - 2.8)
-      greebles.push(
-        box(
-          [px, y, pz],
-          [0.32 + random() * 0.8, 0.16 + random() * 0.65, 0.3 + random() * 0.6],
-          [0, face.rotationY, 0],
+    inkEdges.push(box([0, midY, 0], [tier.width - 0.2, height - 0.4, tier.depth - 0.2]))
+  })
+
+  // -------------------------------------------------------- cantilever observation pod
+  // The pod itself is a hero mesh; these are its structural attachments.
+  structure.push(box([12.8, 47.28, TOWER_DECK.z], [8.6, 0.4, 7.4]))
+  structure.push(strutBetween([14.9, 47.4, 2.4], [8.55, 43.3, 2.4], 0.46))
+  structure.push(strutBetween([14.9, 47.4, -2.4], [8.55, 43.3, -2.4], 0.46))
+  structure.push(box([8.7, 45.8, 0], [0.9, 5.0, 6.2]))
+
+  // ------------------------------------------------------------------- crown
+  structure.push(box([0, 57.85, 0], [14.8, 1.35, 10.4]))
+  trim.push(box([0, 58.65, 0], [14.0, 0.38, 9.8]))
+  structure.push(box([0, 59.7, 0], [13.2, 2.1, 9.2]))
+  glassVolumes.push(box([0, 62.55, 0], [12.4, 4.4, 8.6]))
+
+  const lanternSpec: WindowSpec = {
+    x: 0,
+    z: 0,
+    y0: 60.8,
+    y1: 64.6,
+    width: 12.4,
+    depth: 8.6,
+    columns: 6,
+    rows: 3,
+    litRatio: 0.72,
+    seed: 913,
+    margin: 0.75,
+    style: 'glass',
+    faces: [FACES[1], FACES[2], FACES[3]],
+  }
+  emitWindows(lanternSpec, palette, windows)
+  emitMullions(lanternSpec, frames, { every: 1, width: 0.08, depth: 0.1 })
+  emitBands(lanternSpec, frames, { every: 1, height: 0.12, depth: 0.09 })
+
+  // Crown struts: canted supports that tie the top shaft into the lantern.
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      structure.push(
+        strutBetween(
+          [sx * 8.2, 56.0, sz * 6.0],
+          [sx * 7.05, 59.3, sz * 5.0],
+          0.44,
         ),
       )
     }
+  }
 
-    const paletteForTier = tierIndex % 2 === 0 ? neonCyanBoxes : neonMagentaBoxes
-    const secondaryForTier = tierIndex % 2 === 0 ? neonMagentaBoxes : neonCyanBoxes
+  // Lantern base light ring.
+  for (const face of [
+    [0, 60.85, 4.45, 12.6, 0.07, 0.08],
+    [0, 60.85, -4.45, 12.6, 0.07, 0.08],
+    [4.45, 60.85, 0, 0.08, 0.07, 8.8],
+    [-4.45, 60.85, 0, 0.08, 0.07, 8.8],
+  ] as const) {
+    neonCyanBoxes.push(box([face[0], face[1], face[2]], [face[3], face[4], face[5]]))
+  }
 
-    // Light bands wrap all four faces at the bottom and top of every shaft.
-    const bandY = [tier.y0 + 0.3, tier.y1 - 0.25]
-    bandY.forEach((y, bandIndex) => {
-      FACES.forEach((face, faceIndex) => {
-        const target = (faceIndex + bandIndex + tierIndex) % 3 === 0 ? secondaryForTier : paletteForTier
-        if (face.axis === 'z') {
-          const pz = tier.z + face.sign * (tier.depth / 2 + 0.055)
-          target.push(box([tier.x, y, pz], [tier.width - 0.4, 0.055, 0.045]))
-        } else {
-          const px = tier.x + face.sign * (tier.width / 2 + 0.055)
-          target.push(box([px, y, tier.z], [0.045, 0.055, tier.depth - 0.4]))
-        }
-      })
-    })
+  // The faceted crown, eave trim and ribs are hero geometry in Tower.tsx.
 
-    // Two bright corner rails instead of lighting every edge keeps the geometry legible.
+
+  // Neon hip lines draw the four faceted crown edges in ink and light.
+  for (const sx of [-1, 1]) {
     for (const sz of [-1, 1]) {
-      const pz = tier.z + sz * (tier.depth / 2 + 0.1)
-      const px = tier.x + (sz > 0 ? 1 : -1) * (tier.width / 2 - 0.65)
-      targetForNeon(tierIndex, sz > 0).push(box([px, midY, pz], [0.07, height - 1.3, 0.07]))
+      neonCyanBoxes.push(
+        strutBetween(
+          [sx * 6.7, 64.82, sz * 4.7],
+          [sx * 3.4, 69.55, sz * 2.2],
+          0.045,
+        ),
+      )
     }
-  })
-
-  function targetForNeon(tierIndex: number, positive: boolean) {
-    return (tierIndex + (positive ? 0 : 1)) % 2 === 0 ? neonCyanBoxes : neonMagentaBoxes
   }
 
-  // ---- Crown and machinery ---------------------------------------------------------
-  structure.push(box([0, 56.15, 0], [9.4, 1.15, 9.4]))
-  structure.push(box([0, 58.7, 0], [7.2, 4.6, 7.2]))
-  structure.push(box([0, 61.7, 0], [8.2, 0.75, 8.2]))
-  structure.push(box([0, 62.4, 0], [5.2, 0.7, 5.2]))
-  structure.push(box([0, 65.8, 0], [2.8, 6.5, 2.8]))
-  structure.push(box([0, 69.5, 0], [4.6, 1.2, 4.6]))
-  structure.push(box([4.6, 62.8, 0.3], [0.32, 8.8, 4.8], [0, 0, 0.2]))
-  structure.push(box([-4.35, 62.3, -0.35], [0.3, 7.8, 4.1], [0, 0, -0.25]))
-  structure.push(box([0.3, 63.8, 4.35], [5.4, 6.9, 0.3], [0.18, 0, 0]))
-  structure.push(box([0, 64.55, 0], [1.05, 8.5, 1.05]))
-  structure.push(box([0, 70.9, 0], [2.2, 2.2, 2.2], [0, 0.6, 0]))
-  structure.push(box([-3.4, 57.9, 0], [0.22, 4.7, 0.22], [0, 0, 0.42]))
-  structure.push(box([3.4, 57.9, 0], [0.22, 4.7, 0.22], [0, 0, -0.42]))
-
-  neonCyanBoxes.push(box([0, 56.55, 4.74], [8.8, 0.09, 0.08]))
-  neonCyanBoxes.push(box([0, 62.1, 4.15], [7.3, 0.08, 0.08]))
-  neonMagentaBoxes.push(box([0, 62.45, -4.15], [7.3, 0.08, 0.08]))
-  neonMagentaBoxes.push(box([4.15, 62.0, 0], [0.08, 0.08, 7.2]))
-  neonCyanBoxes.push(box([-4.15, 62.0, 0], [0.08, 0.08, 7.2]))
-
-  // Mechanised observation deck: an asymmetric cantilever that breaks the box silhouette.
-  structure.push(box([9.5, 49.25, 0.1], [7.8, 1.35, 5.2]))
-  structure.push(box([9.5, 48.45, 0.1], [8.6, 0.3, 6]))
-  structure.push(box([9.5, 50.05, 0.1], [8.3, 0.32, 5.7]))
-  structure.push(box([5.9, 47.75, 0.1], [0.42, 3.3, 3.9], [0, 0, -0.34]))
-  glassVolumes.push(box([9.6, 49.5, 0.1], [6.5, 1.15, 4.35]))
-  neonMagentaBoxes.push(box([9.5, 48.23, 0.1], [8.7, 0.055, 6.1]))
-
-  // Cantilever windows are inserted separately because this pod is not a full facade tier.
-  const podFaces: Face[] = [
-    { rotationY: 0, axis: 'z', sign: 1 },
-    { rotationY: Math.PI, axis: 'z', sign: -1 },
-  ]
-  podFaces.forEach((face) => {
-    for (let column = 0; column < 3; column += 1) {
-      for (let row = 0; row < 2; row += 1) {
-        const color = row === 0 ? cyan.clone().multiplyScalar(1.35) : ice.clone().multiplyScalar(0.75)
-        const [px, pz] = facePoint(face, 9.6, 0.1, 6.5, 4.35, -2 + column * 2, 0.04)
-        windows.push({
-          position: [px, 49.12 + row * 0.38, pz],
-          rotationY: face.rotationY,
-          scale: [0.9, 0.24],
-          color: [color.r, color.g, color.b],
-        })
-      }
+  // --------------------------------------------------------------------- sign
+  for (const sz of [-1, 1]) {
+    const signZ = sz * TOWER_SIGN.z
+    frames.push(box([0, TOWER_SIGN.y, signZ], [TOWER_SIGN.width + 0.5, TOWER_SIGN.height + 0.5, 0.42]))
+    inkEdges.push(box([0, TOWER_SIGN.y, signZ], [TOWER_SIGN.width + 0.5, TOWER_SIGN.height + 0.5, 0.42]))
+    // Mounting arms bridge the facade fins.
+    for (const x of [-4.8, 0, 4.8]) {
+      structure.push(box([x, TOWER_SIGN.y, sz * 6.55], [0.22, 0.22, 1.1]))
     }
-  })
-
-  // ---- Crown window slots ----------------------------------------------------------
-  {
-    const random = mulberry32(CROWN_WINDOWS.seed)
-    FACES.forEach((face) => {
-      const span = face.axis === 'z' ? CROWN_WINDOWS.width : CROWN_WINDOWS.depth
-      const colStep = (span - 1.4) / CROWN_WINDOWS.columns
-      const rowStep = (CROWN_WINDOWS.y1 - CROWN_WINDOWS.y0) / CROWN_WINDOWS.rows
-      for (let row = 0; row < CROWN_WINDOWS.rows; row += 1) {
-        for (let column = 0; column < CROWN_WINDOWS.columns; column += 1) {
-          const along = -span / 2 + 0.7 + colStep * (column + 0.5)
-          const color = random() < CROWN_WINDOWS.litRatio ? magenta.clone().multiplyScalar(0.75 + random()) : new Color(0.01, 0.02, 0.03)
-          pushWindow(
-            windows,
-            face,
-            CROWN_WINDOWS.x,
-            CROWN_WINDOWS.z,
-            CROWN_WINDOWS.width,
-            CROWN_WINDOWS.depth,
-            along,
-            CROWN_WINDOWS.y0 + 0.5 + rowStep * (row + 0.5),
-            0.44,
-            0.42,
-            color,
-          )
-        }
-      }
-    })
+    neonCyanBoxes.push(box([-(TOWER_SIGN.width / 2 + 0.32), TOWER_SIGN.y, sz * 7.28], [0.06, TOWER_SIGN.height + 0.2, 0.06]))
+    neonCyanBoxes.push(box([TOWER_SIGN.width / 2 + 0.32, TOWER_SIGN.y, sz * 7.28], [0.06, TOWER_SIGN.height + 0.2, 0.06]))
+    neonMagentaBoxes.push(box([0, TOWER_SIGN.y - TOWER_SIGN.height / 2 - 0.34, sz * 7.28], [TOWER_SIGN.width + 0.2, 0.07, 0.07]))
   }
+
+  // ------------------------------------------------------------------- spire base
+  structure.push(box([0, 70.05, 0], [3.6, 1.1, 3.0]))
+  trim.push(box([0, 70.62, 0], [2.7, 0.35, 2.3]))
+  beacons.push([7.0, 69.9, 0], [-7.0, 69.9, 0])
+
+  // A single warm reveal along the crown lantern reads as a lit interior.
+  neonWarmBoxes.push(box([0, 61.4, 4.34], [9.4, 0.05, 0.06]))
+  neonWarmBoxes.push(box([0, 63.7, 4.34], [9.4, 0.05, 0.06]))
+  neonWarmBoxes.push(box([0, 61.4, -4.34], [9.4, 0.05, 0.06]))
 
   return {
     glassVolumes,
     structure,
-    mullions,
-    braces,
+    frames,
+    trim,
     greebles,
     windows,
     neonCyan: neonCyanBoxes,
     neonMagenta: neonMagentaBoxes,
+    neonWarm: neonWarmBoxes,
+    inkEdges,
+    beacons,
   }
 }
+
+/** Real count of the generated facade, used by the HUD readout. */
+export const TOWER_WINDOW_COUNT = createTowerData('#42f4ff', '#ff2bd6').windows.length

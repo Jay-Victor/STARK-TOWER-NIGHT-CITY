@@ -3,6 +3,21 @@ dist/
 .preview/
 .tools/
 .npm-cache/
-*.tsbuildinfo
+.build-tmp/
+shots/
+
+# Local secrets / editor scratch
+.env
+.env.*
+!.env.example
 *.local
+*.log
+*.tmp
+
+# TypeScript incremental output
+*.tsbuildinfo
+
+# OS metadata
 .DS_Store
+.Thumbs.db
+Desktop.ini

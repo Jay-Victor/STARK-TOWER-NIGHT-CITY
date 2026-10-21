@@ -132,8 +132,8 @@ export function Hud({ settings, ready }: HudProps) {
         </div>
         <div className="structure-grid">
           <div>
-            <span>DRAW CALLS</span>
-            <strong>OPTIMIZED</strong>
+            <span>SHADING</span>
+            <strong>CEL 3→2</strong>
           </div>
           <div>
             <span>WINDOW BATCH</span>

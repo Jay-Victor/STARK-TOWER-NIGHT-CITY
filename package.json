@@ -1,9 +1,9 @@
 {
   "name": "stark-tower-cyberpunk",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
-  "description": "Procedural cyberpunk Stark Tower — React Three Fiber, Drei, Three.js, post-processing and Leva.",
+  "description": "Procedural cel-shaded cyberpunk Stark Tower — React Three Fiber, Drei, Three.js, post-processing and Leva.",
   "author": "Jay-Victor",
   "license": "MIT",
   "homepage": "https://jay-victor.github.io/STARK-TOWER-NIGHT-CITY/",

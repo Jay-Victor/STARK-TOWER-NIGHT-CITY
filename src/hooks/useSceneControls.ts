@@ -55,14 +55,14 @@ export function useSceneControls(): SceneControlState {
       'BLOOM FX': folder(
         {
           bloomIntensity: {
-            value: 1.35,
+            value: 0.65,
             min: 0,
             max: 4,
             step: 0.01,
             label: 'INTENSITY',
           },
           bloomThreshold: {
-            value: 0.55,
+            value: 0.72,
             min: 0,
             max: 1.5,
             step: 0.01,
@@ -76,7 +76,7 @@ export function useSceneControls(): SceneControlState {
             label: 'SMOOTHING',
           },
           bloomRadius: {
-            value: 0.62,
+            value: 0.55,
             min: 0,
             max: 1,
             step: 0.01,
